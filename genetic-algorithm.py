@@ -1,7 +1,5 @@
 import math
 import random
-from operator import ifloordiv
-
 
 def rastrigin_function(xi):
     sum = 0
@@ -9,8 +7,6 @@ def rastrigin_function(xi):
         sum += x**2 - 10 * math.cos(20 * math.pi * x)
     return 10 * len(xi) + sum
 
-
-import random
 
 def calculate_binary_length(a, b, d):
     m_list = []
@@ -80,8 +76,73 @@ def genetic_algorithm(a, b, d):
     return combined
 
 
+def tournament_selection(population, minimize=False, replacement=False):
+    winners = []
+    compare = min if minimize else max
+    il = len(population)
+
+    for _ in range(il):
+        if replacement:
+            tournament_group = random.choices(population, k=2)
+        else:
+            tournament_group = random.sample(population, k=2)
+
+        winner = compare(tournament_group, key=lambda x: x[1])
+        winners.append(winner)
+    return winners
+
+def ranking_selection(population, minimize=False):
+    winners = []
+    sorting = False if minimize else True
+    il = len(population)
+    sorted_population = sorted(population, key=lambda x: x[1], reverse=sorting)
+
+    for _ in range(il):
+        first_random = random.randint(0, il - 1)
+        second_random = random.randint(0, first_random)
+        winner = sorted_population[second_random]
+        winners.append(winner)
+
+    return winners
+
+
+def roulette_selection(population, minimize=False):
+    winners = []
+    il = len(population)
+
+    chromosomes = [value[0] for value in population]
+    values = [value[1] for value in population]
+    
+    if minimize:
+        inverted_values = [1 / value for value in values]
+        total_value = sum(inverted_values)
+        probabilities = [inv_value / total_value for inv_value in inverted_values]
+    else:
+        total_value = sum(values)
+        probabilities = [value / total_value for value in values]
+
+    distributions = []
+    distribution = 0
+    for prob in probabilities:
+        distribution += prob
+        distributions.append(distribution)
+    for _ in range(il):
+        random_value = random.random()
+        previous_distribution = 0
+        for i, distribution in enumerate(distributions):
+            if previous_distribution < random_value <= distribution:
+                winners.append((chromosomes[i], values[i]))
+                break
+            previous_distribution = distribution
+
+    return winners
+
+    
 A = [-1, 1, 1, 1]
 B = [1, 3, 4, 4]
 D = [1, 1, 1, 2]
 
 population = genetic_algorithm(A, B, D)
+print(tournament_selection(population, minimize=True ,replacement=True))
+print(ranking_selection(population, minimize=True))
+print(roulette_selection(population, minimize=True))
