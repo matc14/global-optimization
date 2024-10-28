@@ -137,12 +137,58 @@ def roulette_selection(population, minimize=False):
 
     return winners
 
+
+def mutate_population(population, mutation_probability=0.2):
+    mutated_population = []
+
+    for chromosome, fitness in population:
+        mutated_chromosome = ""
+        for gene in chromosome:
+            random_value = random.random()
+            if random_value < mutation_probability:
+                mutated_gene = '1' if gene == '0' else '0'
+            else:
+                mutated_gene = gene
+
+            mutated_chromosome += mutated_gene
+
+        mutated_population.append((mutated_chromosome, fitness))
+
+    return mutated_population
+
+
+def inverse_population(population, inversion_probability=0.2):
+    inverted_population = []
+
+    for chromosome, fitness in population:
+        random_value = random.random()
+        if random_value < inversion_probability:
+            idx1, idx2 = sorted(random.sample(range(len(chromosome)), 2))
+            print(idx1, idx2)
+            inverted_chromosome = (
+                    chromosome[:idx1] +
+                    chromosome[idx1:idx2 + 1][::-1] +
+                    chromosome[idx2 + 1:]
+            )
+        else:
+            inverted_chromosome = chromosome
+
+        inverted_population.append((inverted_chromosome, fitness))
+
+    return inverted_population
+
+
     
 A = [-1, 1, 1, 1]
 B = [1, 3, 4, 4]
 D = [1, 1, 1, 2]
 
 population = genetic_algorithm(A, B, D)
-print(tournament_selection(population, minimize=True ,replacement=True))
-print(ranking_selection(population, minimize=True))
-print(roulette_selection(population, minimize=True))
+print(population)
+
+# print(tournament_selection(population, minimize=True ,replacement=True))
+# print(ranking_selection(population, minimize=True))
+# print(roulette_selection(population, minimize=True))
+
+print(mutate_population(population))
+print(inverse_population(population))
