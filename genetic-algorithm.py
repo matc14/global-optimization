@@ -188,7 +188,84 @@ def inverse_population(population, inversion_probability=0.2):
     return inverted_population
 
 
+def crossover_selection(population, crossover_probability=0.5):
+    selected_population = []
+
+    for chromosome, fitness in population:
+        random_value = random.random()
+        if random_value < crossover_probability:
+            selected_population.append((chromosome, fitness))
     
+    if len(selected_population) % 2 != 0:
+        random_index = random.randint(0, len(selected_population) - 1)
+        selected_population.remove(selected_population[random_index])
+
+    random.shuffle(selected_population)
+    crossover_pairs = [(selected_population[i], selected_population[i + 1])
+             for i in range(0, len(selected_population) - 1, 2)]
+
+    return crossover_pairs
+
+
+def multipoint_crossover(pairs, crossover_type='single'):
+    children = []
+    
+    for pair in pairs:
+        (parent1, _), (parent2, _) = pair
+
+        if crossover_type == 'single':
+            point = random.randint(1, len(parent1) - 1)
+            child1 = parent1[:point] + parent2[point:]
+            child2 = parent2[:point] + parent1[point:]
+
+        elif crossover_type == 'double':
+            point1 = random.randint(1, len(parent1) - 2)
+            point2 = random.randint(point1 + 1, len(parent1) - 1)
+            child1 = parent1[:point1] + parent2[point1:point2] + parent1[point2:]
+            child2 = parent2[:point1] + parent1[point1:point2] + parent2[point2:]
+
+        elif crossover_type == 'multi':
+            points = random.randint(2,len(parent1) - 1)
+            crossover_points = sorted(random.sample(range(1, len(parent1)), points))
+            segments1, segments2 = [], []
+            last_point = 0
+
+            for i, point in enumerate(crossover_points + [len(parent1)]):
+                if i % 2 == 0:
+                    segments1.append(parent1[last_point:point])
+                    segments2.append(parent2[last_point:point])
+                else:
+                    segments1.append(parent2[last_point:point])
+                    segments2.append(parent1[last_point:point])
+                last_point = point
+
+            child1 = '|'.join(segments1)
+            child2 = '|'.join(segments2)
+
+        else:
+            raise ValueError("Invalid crossover type or points for crossover.")
+
+        children.append((child1, child2))
+
+    return children
+
+
+def uniform_crossover(pairs):
+    children = []
+    
+    for pair in pairs:
+        (parent1, _), (parent2, _) = pair
+
+        pattern = ''.join(random.choice('01') for _ in range(len(parent1)))
+        child1 = ''.join(parent1[i] if pattern[i] == '0' else parent2[i] for i in range(len(parent1)))
+        child2 = ''.join(parent2[i] if pattern[i] == '0' else parent1[i] for i in range(len(parent1)))
+
+        children.append((child1, child2))
+
+    return children
+
+
+
 A = [-1, 1, 1, 1]
 B = [1, 3, 4, 4]
 D = [1, 1, 1, 2]
@@ -215,3 +292,8 @@ population = genetic_algorithm(A, B, D)
 # 
 # print("Inversion")
 # print(inverse_population(mutate_population(population)))
+#
+# crossover_pairs = crossover_selection(population)
+# print(crossover_pairs)
+# print(multipoint_crossover(crossover_pairs, crossover_type='multi'))
+# print(uniform_crossover(crossover_pairs))
