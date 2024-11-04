@@ -20,6 +20,7 @@ def calculate_binary_length(a, b, d):
         c_list.append(c)
     return m_list, c_list
 
+
 def generate_population(n, m_list, c_list):
     all_populations = []
 
@@ -38,10 +39,9 @@ def generate_population(n, m_list, c_list):
         combined_individual = ''.join(population[i] for population in all_populations)
         combined_population.append(combined_individual)
 
-    print(all_populations)
-    print(combined_population)
+    # print(all_populations)
+    # print(combined_population)
     return all_populations, combined_population
-
 
 
 def evaluate_population(populations, a_list, b_list, m_list):
@@ -81,28 +81,35 @@ def tournament_selection(population, minimize=False, replacement=False):
     compare = min if minimize else max
     il = len(population)
 
+    print("Groups:")
     for _ in range(il):
         if replacement:
             tournament_group = random.choices(population, k=2)
         else:
             tournament_group = random.sample(population, k=2)
-
+        print(tournament_group)
+        
         winner = compare(tournament_group, key=lambda x: x[1])
         winners.append(winner)
+        
+    print("Result:")
     return winners
+
 
 def ranking_selection(population, minimize=False):
     winners = []
     sorting = False if minimize else True
     il = len(population)
     sorted_population = sorted(population, key=lambda x: x[1], reverse=sorting)
-
+    print("Sorted population:")
+    print(sorted_population)
     for _ in range(il):
         first_random = random.randint(0, il - 1)
         second_random = random.randint(0, first_random)
         winner = sorted_population[second_random]
         winners.append(winner)
-
+    
+    print("Result:")
     return winners
 
 
@@ -126,6 +133,10 @@ def roulette_selection(population, minimize=False):
     for prob in probabilities:
         distribution += prob
         distributions.append(distribution)
+    print("Probability")
+    print(probabilities)
+    print("\nDistribution:")
+    print(distributions)
     for _ in range(il):
         random_value = random.random()
         previous_distribution = 0
@@ -134,7 +145,7 @@ def roulette_selection(population, minimize=False):
                 winners.append((chromosomes[i], values[i]))
                 break
             previous_distribution = distribution
-
+    print("\nResult:")
     return winners
 
 
@@ -164,7 +175,6 @@ def inverse_population(population, inversion_probability=0.2):
         random_value = random.random()
         if random_value < inversion_probability:
             idx1, idx2 = sorted(random.sample(range(len(chromosome)), 2))
-            print(idx1, idx2)
             inverted_chromosome = (
                     chromosome[:idx1] +
                     chromosome[idx1:idx2 + 1][::-1] +
@@ -184,11 +194,24 @@ B = [1, 3, 4, 4]
 D = [1, 1, 1, 2]
 
 population = genetic_algorithm(A, B, D)
-print(population)
 
-# print(tournament_selection(population, minimize=True ,replacement=True))
-# print(ranking_selection(population, minimize=True))
-# print(roulette_selection(population, minimize=True))
-
-print(mutate_population(population))
-print(inverse_population(population))
+# print("Initial population:")
+# print(population)
+# print("\nTournament selection:")
+# print(tournament_selection(population, minimize=False, replacement=True))
+# 
+# print("Initial population:")
+# print(population)
+# print("\nRanking selection:")
+# print(ranking_selection(population, minimize=False))
+# 
+# print("Initial population:")
+# print(population)
+# print("\nRoulette selection:")
+# print(roulette_selection(population, minimize=False))
+# 
+# print("Mutation")
+# print(mutate_population(population))
+# 
+# print("Inversion")
+# print(inverse_population(mutate_population(population)))
