@@ -225,7 +225,7 @@ def multipoint_crossover(pairs, crossover_type='single'):
             child2 = parent2[:point1] + parent1[point1:point2] + parent2[point2:]
 
         elif crossover_type == 'multi':
-            points = random.randint(2,len(parent1) - 1)
+            points = random.randint(3, len(parent1) - 1)
             crossover_points = sorted(random.sample(range(1, len(parent1)), points))
             segments1, segments2 = [], []
             last_point = 0
@@ -239,8 +239,8 @@ def multipoint_crossover(pairs, crossover_type='single'):
                     segments2.append(parent1[last_point:point])
                 last_point = point
 
-            child1 = '|'.join(segments1)
-            child2 = '|'.join(segments2)
+            child1 = ''.join(segments1)
+            child2 = ''.join(segments2)
 
         else:
             raise ValueError("Invalid crossover type or points for crossover.")
@@ -287,13 +287,15 @@ population = genetic_algorithm(A, B, D)
 # print("\nRoulette selection:")
 # print(roulette_selection(population, minimize=False))
 # 
-# print("Mutation")
-# print(mutate_population(population))
-# 
-# print("Inversion")
-# print(inverse_population(mutate_population(population)))
-#
-# crossover_pairs = crossover_selection(population)
-# print(crossover_pairs)
-# print(multipoint_crossover(crossover_pairs, crossover_type='multi'))
-# print(uniform_crossover(crossover_pairs))
+print("Mutation")
+mutated_population = mutate_population(population)
+print(mutated_population)
+
+print("Inversion")
+inverted_population = inverse_population(mutated_population)
+print(inverted_population)
+
+crossover_pairs = crossover_selection(inverted_population)
+print(crossover_pairs)
+print(multipoint_crossover(crossover_pairs, crossover_type='multi'))
+print(uniform_crossover(crossover_pairs))
