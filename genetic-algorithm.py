@@ -1,6 +1,7 @@
 import math
 import random
 
+
 def rastrigin_function(xi):
     sum = 0
     for x in xi:
@@ -36,7 +37,7 @@ def generate_population(n, m_list, c_list):
 
     combined_population = []
     for i in range(n):
-        combined_individual = ''.join(population[i] for population in all_populations)
+        combined_individual = '|'.join(population[i] for population in all_populations)
         combined_population.append(combined_individual)
 
     # print(all_populations)
@@ -81,18 +82,18 @@ def tournament_selection(population, minimize=False, replacement=False):
     compare = min if minimize else max
     il = len(population)
 
-    print("Groups:")
+    #print("Groups:")
     for _ in range(il):
         if replacement:
             tournament_group = random.choices(population, k=2)
         else:
             tournament_group = random.sample(population, k=2)
-        print(tournament_group)
+        #print(tournament_group)
         
         winner = compare(tournament_group, key=lambda x: x[1])
         winners.append(winner)
         
-    print("Result:")
+    #print("Result:")
     return winners
 
 
@@ -149,120 +150,150 @@ def roulette_selection(population, minimize=False):
     return winners
 
 
-def mutate_population(population, mutation_probability=0.2):
+def join_chromosome(chromosome):
+    """Łączy segmenty chromosomu w jeden ciąg znaków."""
+    return ''.join(chromosome.split('|'))
+
+
+def split_chromosome(chromosome, segment_lengths):
+    """Dzieli chromosom na segmenty o podanych długościach."""
+    segments = []
+    start = 0
+    for length in segment_lengths:
+        segments.append(chromosome[start:start + length])
+        start += length
+    return '|'.join(segments)
+
+
+def recalculate_fitness(population, a, b, m):
+    chromosomes = [individual[0] for individual in population]
+    split_chromosomes = [chromosome.split('|') for chromosome in chromosomes]
+    all_populations = list(map(list, zip(*split_chromosomes)))
+    new_values = evaluate_population(all_populations, a, b, m)
+    updated_population = [(chromosomes[i], new_values[i]) for i in range(len(chromosomes))]
+    return updated_population
+
+
+def mutate_population(population, segment_lengths, mutation_probability=0.2):
     mutated_population = []
 
     for chromosome, fitness in population:
+        full_chromosome = join_chromosome(chromosome)
         mutated_chromosome = ""
-        for gene in chromosome:
-            random_value = random.random()
-            if random_value < mutation_probability:
+        for gene in full_chromosome:
+            if random.random() < mutation_probability:
                 mutated_gene = '1' if gene == '0' else '0'
             else:
                 mutated_gene = gene
-
             mutated_chromosome += mutated_gene
 
-        mutated_population.append((mutated_chromosome, fitness))
+        final_chromosome = split_chromosome(mutated_chromosome, segment_lengths)
+        mutated_population.append((final_chromosome, fitness))
 
     return mutated_population
 
 
-def inverse_population(population, inversion_probability=0.2):
+def inverse_population(population, segment_lengths, inversion_probability=0.2):
     inverted_population = []
 
     for chromosome, fitness in population:
-        random_value = random.random()
-        if random_value < inversion_probability:
-            idx1, idx2 = sorted(random.sample(range(len(chromosome)), 2))
-            inverted_chromosome = (
-                    chromosome[:idx1] +
-                    chromosome[idx1:idx2 + 1][::-1] +
-                    chromosome[idx2 + 1:]
+        full_chromosome = join_chromosome(chromosome)
+        if random.random() < inversion_probability:
+            idx1, idx2 = sorted(random.sample(range(len(full_chromosome)), 2))
+            full_chromosome = (
+                    full_chromosome[:idx1] + full_chromosome[idx1:idx2 + 1][::-1] + full_chromosome[idx2 + 1:]
             )
-        else:
-            inverted_chromosome = chromosome
 
-        inverted_population.append((inverted_chromosome, fitness))
+        final_chromosome = split_chromosome(full_chromosome, segment_lengths)
+        inverted_population.append((final_chromosome, fitness))
 
     return inverted_population
 
 
 def crossover_selection(population, crossover_probability=0.5):
-    selected_population = []
+    selected_indices = []
 
-    for chromosome, fitness in population:
-        random_value = random.random()
-        if random_value < crossover_probability:
-            selected_population.append((chromosome, fitness))
-    
-    if len(selected_population) % 2 != 0:
-        random_index = random.randint(0, len(selected_population) - 1)
-        selected_population.remove(selected_population[random_index])
+    for i in range(len(population)):
+        if random.random() < crossover_probability:
+            selected_indices.append(i)
 
-    random.shuffle(selected_population)
-    crossover_pairs = [(selected_population[i], selected_population[i + 1])
-             for i in range(0, len(selected_population) - 1, 2)]
+    if len(selected_indices) % 2 != 0:
+        selected_indices.pop(random.randint(0, len(selected_indices) - 1))
+
+    random.shuffle(selected_indices)
+    crossover_pairs = [(selected_indices[i], selected_indices[i + 1])
+                       for i in range(0, len(selected_indices), 2)]
 
     return crossover_pairs
 
+def multipoint_crossover(population, pairs, segment_lengths, crossover_type='single'):
 
-def multipoint_crossover(pairs, crossover_type='single'):
-    children = []
-    
-    for pair in pairs:
-        (parent1, _), (parent2, _) = pair
+    for idx1, idx2 in pairs:
+        parent1, fitness1 = population[idx1]
+        parent2, fitness2 = population[idx2]
+
+        parent1_full = join_chromosome(parent1)
+        parent2_full = join_chromosome(parent2)
+        length = len(parent1_full)
 
         if crossover_type == 'single':
-            point = random.randint(1, len(parent1) - 1)
-            child1 = parent1[:point] + parent2[point:]
-            child2 = parent2[:point] + parent1[point:]
+            point = random.randint(1, length - 1)
+            child1 = parent1_full[:point] + parent2_full[point:]
+            child2 = parent2_full[:point] + parent1_full[point:]
 
         elif crossover_type == 'double':
-            point1 = random.randint(1, len(parent1) - 2)
-            point2 = random.randint(point1 + 1, len(parent1) - 1)
-            child1 = parent1[:point1] + parent2[point1:point2] + parent1[point2:]
-            child2 = parent2[:point1] + parent1[point1:point2] + parent2[point2:]
+            point1 = random.randint(1, length - 2)
+            point2 = random.randint(point1 + 1, length - 1)
+            child1 = parent1_full[:point1] + parent2_full[point1:point2] + parent1_full[point2:]
+            child2 = parent2_full[:point1] + parent1_full[point1:point2] + parent2_full[point2:]
 
         elif crossover_type == 'multi':
-            points = random.randint(3, len(parent1) - 1)
-            crossover_points = sorted(random.sample(range(1, len(parent1)), points))
+            num_points = random.randint(3, length - 1)
+            crossover_points = sorted(random.sample(range(1, length), num_points))
             segments1, segments2 = [], []
             last_point = 0
 
-            for i, point in enumerate(crossover_points + [len(parent1)]):
+            for i, point in enumerate(crossover_points + [length]):
                 if i % 2 == 0:
-                    segments1.append(parent1[last_point:point])
-                    segments2.append(parent2[last_point:point])
+                    segments1.append(parent1_full[last_point:point])
+                    segments2.append(parent2_full[last_point:point])
                 else:
-                    segments1.append(parent2[last_point:point])
-                    segments2.append(parent1[last_point:point])
+                    segments1.append(parent2_full[last_point:point])
+                    segments2.append(parent1_full[last_point:point])
                 last_point = point
 
             child1 = ''.join(segments1)
             child2 = ''.join(segments2)
 
-        else:
-            raise ValueError("Invalid crossover type or points for crossover.")
+        child1_split = split_chromosome(child1, segment_lengths)
+        child2_split = split_chromosome(child2, segment_lengths)
 
-        children.append((child1, child2))
+        population[idx1] = (child1_split, fitness1)
+        population[idx2] = (child2_split, fitness2)
 
-    return children
+    return population
 
 
-def uniform_crossover(pairs):
-    children = []
-    
-    for pair in pairs:
-        (parent1, _), (parent2, _) = pair
 
-        pattern = ''.join(random.choice('01') for _ in range(len(parent1)))
-        child1 = ''.join(parent1[i] if pattern[i] == '0' else parent2[i] for i in range(len(parent1)))
-        child2 = ''.join(parent2[i] if pattern[i] == '0' else parent1[i] for i in range(len(parent1)))
+def uniform_crossover(population, pairs, segment_lengths):
+    for idx1, idx2 in pairs:
+        parent1, fitness1 = population[idx1]
+        parent2, fitness2 = population[idx2]
 
-        children.append((child1, child2))
+        parent1_full = join_chromosome(parent1)
+        parent2_full = join_chromosome(parent2)
 
-    return children
+        pattern = ''.join(random.choice('01') for _ in range(len(parent1_full)))
+        child1 = ''.join(parent1_full[i] if pattern[i] == '0' else parent2_full[i] for i in range(len(parent1_full)))
+        child2 = ''.join(parent2_full[i] if pattern[i] == '0' else parent1_full[i] for i in range(len(parent1_full)))
+
+        child1_split = split_chromosome(child1, segment_lengths)
+        child2_split = split_chromosome(child2, segment_lengths)
+
+        population[idx1] = (child1_split, fitness1)
+        population[idx2] = (child2_split, fitness2)
+
+    return population
 
 
 
@@ -272,30 +303,16 @@ D = [1, 1, 1, 2]
 
 population = genetic_algorithm(A, B, D)
 
-# print("Initial population:")
-# print(population)
-# print("\nTournament selection:")
-# print(tournament_selection(population, minimize=False, replacement=True))
-# 
-# print("Initial population:")
-# print(population)
-# print("\nRanking selection:")
-# print(ranking_selection(population, minimize=False))
-# 
-# print("Initial population:")
-# print(population)
-# print("\nRoulette selection:")
-# print(roulette_selection(population, minimize=False))
-# 
-print("Mutation")
-mutated_population = mutate_population(population)
-print(mutated_population)
+segment_lengths = [len(segment) for segment in population[0][0].split('|')]
 
-print("Inversion")
-inverted_population = inverse_population(mutated_population)
-print(inverted_population)
 
-crossover_pairs = crossover_selection(inverted_population)
-print(crossover_pairs)
-print(multipoint_crossover(crossover_pairs, crossover_type='multi'))
-print(uniform_crossover(crossover_pairs))
+for epoch in range(10):
+    print(f"\nEpoch {epoch + 1}")
+    selected_population = tournament_selection(population)
+    mutated_population = mutate_population(selected_population, segment_lengths)
+    inverted_population = inverse_population(mutated_population, segment_lengths)
+    crossover_pairs = crossover_selection(inverted_population)
+    population = uniform_crossover(inverted_population, crossover_pairs, segment_lengths)
+    population = recalculate_fitness(population, A, B, calculate_binary_length(A, B, D)[0])
+    for chromosome in population:
+        print(chromosome)
